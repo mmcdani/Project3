@@ -1,7 +1,10 @@
 ---
-title: "Modeling"
-format: html
-editor: visual
+title: "EDA"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    output-dir: docs
 ---
 
 ## Quarto
