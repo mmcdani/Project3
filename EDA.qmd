@@ -120,4 +120,8 @@ diabetes_data$Income <- factor(diabetes_data$Income,
 diabetes_data
 ```
 
+```{r}
+as.data.frame(diabetes_data)
+```
+
 [Click here for the Modeling Page](Modeling.html)
