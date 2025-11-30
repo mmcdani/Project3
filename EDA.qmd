@@ -9,21 +9,24 @@ editor_options:
   chunk_output_type: console
 ---
 ### Introduction 
- briefly describes the data and the variables you have to work with (just discuss the ones you’ll inves
-tigate/use in your analysis).
- • describes the purpose of your EDA and ultimate goal of modeling
 
+ briefly describes the data and the variables you have to work with (just discuss the ones you’ll inves
+tigate/use in your analysis). - Looking at different factors that may result in a person being more likely to have diabetes. 
+ • describes the purpose of your EDA and ultimate goal of modeling - the ultimate goal is to determine factors that are highly correlated with having diabetes. 
+
+### Data 
 Necessary libraries
-```{r}
+```{r, warning= FALSE} 
 library(tidyr)
 library(dplyr)
 library(readr)
+library(ggplot2)
 ```
 
 
 import data 
 ```{r}
-diabetes_data <- read_csv("data/diabetes_012_health_indicators_BRFSS2015.csv")
+diabetes_data <- read_csv("data/diabetes_binary_health_indicators_BRFSS2015.csv")
 ```
 
 cleaning the data
@@ -31,63 +34,67 @@ cleaning the data
 #check for missing values
 diabetes_data |>
   is.na() |>
-  colSums() #not missing any values
+  colSums() 
 ```
+
+The data set does not have any missing values.
 
 ```{r}
 #check column types and values 
 attributes(diabetes_data)$spec
 ```
 
+Many of the variables are listed as numeric and they should be categorical variables 
+
 ```{r}
 #change incorrect column types
-diabetes_data$Diabetes_012 <- factor(diabetes_data$Diabetes_012,
-                                     levels = c(0, 1, 2),
-                                     labels = c("No diabetes", "Prediabetes", "Diabetes"))
+diabetes_data$Diabetes_binary <- factor(diabetes_data$Diabetes_binary,
+                                     levels = c(0, 1),
+                                     labels = c("No diabetes", "Diabetic or Prediabetic"))
 
 diabetes_data$HighBP <- factor(diabetes_data$HighBP,
                                      levels = c(0, 1),
-                                     labels = c("No high BP", "High BP"))
+                                     labels = c("Normal BP", "High BP"))
 
 diabetes_data$HighChol <- factor(diabetes_data$HighChol,
                                      levels = c(0, 1),
-                                     labels = c("No high cholesterol", "high cholesterol"))
+                                     labels = c("Normal Cholesterol", "High Cholesterol"))
 
 diabetes_data$CholCheck <- factor(diabetes_data$CholCheck,
                                      levels = c(0, 1),
-                                     labels = c("No cholesterol check in 5 years", "Cholesterol check in 5 years"))
+                                     labels = c("No", "Yes"))
 
 diabetes_data$Smoker <- factor(diabetes_data$Smoker,
                                      levels = c(0, 1),
-                                     labels = c("smoker", "not a smoker")) #a smoker has smoked 5 packs (100 cigarettes in entire life)
+                                     labels = c("Not a Smoker", "Smoker")) #a smoker has smoked 5 packs (100 cigarettes in entire life)
 
 diabetes_data$Stroke <- factor(diabetes_data$Stroke,
                                      levels = c(0, 1),
-                                     labels = c("No", "Yes"))
+                                     labels = c("No Stroke", "Has had a stroke"))
 
 diabetes_data$HeartDiseaseorAttack <- factor(diabetes_data$HeartDiseaseorAttack,
                                      levels = c(0, 1),
-                                     labels = c("No", "Yes"))
+                                     labels = c("No heart disease or attack", "Has heart disease or heart attack"))
 
 diabetes_data$PhysActivity <- factor(diabetes_data$PhysActivity,
                                      levels = c(0, 1),
-                                     labels = c("No", "Yes"))
+                                     labels = c("No Physical Activity", "Physcial Activity"))
 
 diabetes_data$Fruits <- factor(diabetes_data$Fruits,
                                      levels = c(0, 1),
-                                     labels = c("No", "Yes"))
+                                     labels = c("No Fruits", "Eats Fruits"))
 
 diabetes_data$Veggies <- factor(diabetes_data$Veggies,
                                      levels = c(0, 1),
-                                     labels = c("No", "Yes"))
+                                     labels = c("No Veggies", "Eats Veggies"))
 
 diabetes_data$HvyAlcoholConsump <- factor(diabetes_data$HvyAlcoholConsump,
                                      levels = c(0, 1),
-                                     labels = c("No", "Yes"))
+                                     labels = c("No Heavy Alcohol Consumption", "Heavy Alcohol Consumption"))
 
 diabetes_data$AnyHealthcare <- factor(diabetes_data$AnyHealthcare,
                                      levels = c(0, 1),
-                                     labels = c("No", "Yes"))
+                                     labels = c("No Healthcare", "Has Healthcare"))
 
 diabetes_data$NoDocbcCost <- factor(diabetes_data$NoDocbcCost,
                                      levels = c(0, 1),
@@ -114,14 +121,148 @@ diabetes_data$Education <- factor(diabetes_data$Education,
                                      labels = c("Never attended or kindergarden", "Completed Elementary", "Completed Middle", "Completed Highschool","Some college", "College 4 or more years" ))
 
 diabetes_data$Income <- factor(diabetes_data$Income,
-                                     levels = c(1, 5, 8),
-                                     labels = c("<10000", "<35000", ">=75000"))
+                                     levels = c(1, 2, 3, 4, 5, 6, 7, 8),
+#need to figure out how to separate income
+                                                                    labels = c("<10000", "10000-14999", "15000-19999", "20000-24999", "30000-34999", "35000-39999","40000-44999", ">=75000"))
 
-diabetes_data
+head(diabetes_data)
+```
+
+
+### Summarizations
+
+```{r}
+binary_vars <- c("HighBP", "HighChol", "Smoker", "Stroke", "HeartDiseaseorAttack",
+                 "PhysActivity", "Fruits", "Veggies", "HvyAlcoholConsump",
+                 "AnyHealthcare", "NoDocbcCost", "DiffWalk")
+
+binary_summary_wide <- diabetes_data |>
+  select(all_of(binary_vars)) |>
+  pivot_longer(cols = everything(),
+               names_to = "Variable",
+               values_to = "Value") |>
+  group_by(Variable, Value) |>
+  reframe(Count = n()) |>
+  pivot_wider(names_from = Value, values_from = Count)
+binary_summary_wide
+```
+
+Create some contingency tables to see if any variables stick out that I would like to look at more 
+
+Is diabetes more prevelant depending on gender
+```{r}
+ggplot(
+  data = diabetes_data |> drop_na(Sex, Diabetes_binary),
+  aes(x = Sex, fill = Diabetes_binary)
+) +
+  geom_bar(position = position_dodge(width = 0.9)) +
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    position = position_dodge(width = 0.9),
+    vjust = -0.3,
+    size = 3
+  ) +
+  labs(
+    x = "Sex",
+    fill = "Diabetes Diagnosis",
+    y = "Count"
+  ) +
+  scale_fill_discrete()
+```
+
+Gender does not seem to have an influence on whether it is more likely to be diagnosed as prediabetic or diabetic. 
+
+smoking 
+```{r}
+ggplot(
+  data = diabetes_data |> drop_na(Smoker, Diabetes_binary),
+  aes(x = Sex, fill = Diabetes_binary)
+) +
+  geom_bar(position = position_dodge(width = 0.9)) +
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    position = position_dodge(width = 0.9),
+    vjust = -0.3,
+    size = 3
+  ) +
+  labs(
+    x = "Smoker",
+    fill = "Diabetes Diagnosis",
+    y = "Count"
+  ) +
+  scale_fill_discrete()
+```
+
+Smoking does not seem to have an influence on whether it is more likely to be diagnosed as pre-diabetic or diabetic. A smoker in this study is defined as someone that has smoked 100 cigarettes in their lifetime. 
+
+heavy alcohol consumption
+```{r}
+ggplot(
+  data = diabetes_data |> drop_na(HvyAlcoholConsump, Diabetes_binary),
+  aes(x = HvyAlcoholConsump, fill = Diabetes_binary)
+) +
+  geom_bar(position = position_dodge(width = 0.9)) +
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    position = position_dodge(width = 0.9),
+    vjust = -0.3,
+    size = 3
+  ) +
+  labs(
+    x = "Heavy Alcohol Consumption",
+    fill = "Diabetes Diagnosis",
+    y = "Count"
+  ) +
+  scale_fill_discrete()
 ```
 
 ```{r}
-as.data.frame(diabetes_data)
+ggplot(data = diabetes_data |> drop_na(Diabetes_binary), aes(x = HvyAlcoholConsump)) + 
+  geom_bar()
 ```
 
+physical activity  
+```{r}
+table(diabetes_data$Diabetes_binary, diabetes_data$PhysActivity)
+```
+
+```{r}
+ggplot(data = diabetes_data |> drop_na(Diabetes_binary), aes(x = PhysActivity)) + 
+  geom_bar()
+```
+
+Age
+```{r}
+table(diabetes_data$Diabetes_binary, diabetes_data$Age)
+```
+
+```{r}
+ggplot(data = diabetes_data |> drop_na(Diabetes_binary), aes(x = Age)) + 
+  geom_bar()
+```
+
+High Blood Pressure
+```{r}
+table(diabetes_data$Diabetes_binary, diabetes_data$HighBP)
+```
+
+```{r}
+ggplot(data = diabetes_data |> drop_na(Diabetes_binary), aes(x = HighBP)) + 
+  geom_bar()
+```
+
+High Cholesterol
+```{r}
+table(diabetes_data$Diabetes_binary, diabetes_data$HighChol)
+```
+
+```{r}
+ggplot(data = diabetes_data |> drop_na(Diabetes_binary), aes(x = HighChol)) + 
+  geom_bar()
+```
+
+### Link to Modeling Page 
 [Click here for the Modeling Page](Modeling.html)
