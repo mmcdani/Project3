@@ -177,7 +177,7 @@ smoking
 ```{r}
 ggplot(
   data = diabetes_data |> drop_na(Smoker, Diabetes_binary),
-  aes(x = Sex, fill = Diabetes_binary)
+  aes(x = Smoker, fill = Diabetes_binary)
 ) +
   geom_bar(position = position_dodge(width = 0.9)) +
   geom_text(
@@ -218,51 +218,100 @@ ggplot(
   ) +
   scale_fill_discrete()
 ```
-
-```{r}
-ggplot(data = diabetes_data |> drop_na(Diabetes_binary), aes(x = HvyAlcoholConsump)) + 
-  geom_bar()
-```
+**double check this people with high alcohol consumption are more likely to have diabetes than people without high alcohol consumption**
 
 physical activity  
 ```{r}
-table(diabetes_data$Diabetes_binary, diabetes_data$PhysActivity)
+ggplot(
+  data = diabetes_data |> drop_na(PhysActivity, Diabetes_binary),
+  aes(x = PhysActivity, fill = Diabetes_binary)
+) +
+  geom_bar(position = position_dodge(width = 0.9)) +
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    position = position_dodge(width = 0.9),
+    vjust = -0.3,
+    size = 3
+  ) +
+  labs(
+    x = "Physical Activity",
+    fill = "Diabetes Diagnosis",
+    y = "Count"
+  ) +
+  scale_fill_discrete()
 ```
-
-```{r}
-ggplot(data = diabetes_data |> drop_na(Diabetes_binary), aes(x = PhysActivity)) + 
-  geom_bar()
-```
+**double check this - people that exercise are almost twice as likely to have diabetes** 
 
 Age
 ```{r}
-table(diabetes_data$Diabetes_binary, diabetes_data$Age)
+ggplot(
+  data = diabetes_data |> drop_na(Age, Diabetes_binary),
+  aes(x = Age, fill = Diabetes_binary)
+) +
+  geom_bar(position = position_dodge(width = 0.9)) +
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    position = position_dodge(width = 0.9),
+    vjust = -0.3,
+    size = 3
+  ) +
+  labs(
+    x = "Age",
+    fill = "Diabetes Diagnosis",
+    y = "Count"
+  ) +
+  scale_fill_discrete()
 ```
-
-```{r}
-ggplot(data = diabetes_data |> drop_na(Diabetes_binary), aes(x = Age)) + 
-  geom_bar()
-```
+Between the ages of 50  and 80 and older seem to be more likely to have diabetes. 
 
 High Blood Pressure
 ```{r}
-table(diabetes_data$Diabetes_binary, diabetes_data$HighBP)
+ggplot(
+  data = diabetes_data |> drop_na(HighBP, Diabetes_binary),
+  aes(x = HighBP, fill = Diabetes_binary)
+) +
+  geom_bar(position = position_dodge(width = 0.9)) +
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    position = position_dodge(width = 0.9),
+    vjust = -0.3,
+    size = 3
+  ) +
+  labs(
+    x = "High BP",
+    fill = "Diabetes Diagnosis",
+    y = "Count"
+  ) +
+  scale_fill_discrete()
 ```
 
-```{r}
-ggplot(data = diabetes_data |> drop_na(Diabetes_binary), aes(x = HighBP)) + 
-  geom_bar()
-```
-
+Participants with high blood pressure are 4 times as likely to have diabetes than participants withough high blood pressure. 
 High Cholesterol
 ```{r}
-table(diabetes_data$Diabetes_binary, diabetes_data$HighChol)
+ggplot(
+  data = diabetes_data |> drop_na(HighChol, Diabetes_binary),
+  aes(x = HighChol, fill = Diabetes_binary)
+) +
+  geom_bar(position = position_dodge(width = 0.9)) +
+  geom_text(
+    aes(label = after_stat(count)),
+    stat = "count",
+    position = position_dodge(width = 0.9),
+    vjust = -0.3,
+    size = 3
+  ) +
+  labs(
+    x = "High Cholesterol",
+    fill = "Diabetes Diagnosis",
+    y = "Count"
+  ) +
+  scale_fill_discrete()
 ```
 
-```{r}
-ggplot(data = diabetes_data |> drop_na(Diabetes_binary), aes(x = HighChol)) + 
-  geom_bar()
-```
+From the study the participants with high cholesterol seem to be twice as likely to have diabetes than participants without high cholesterol. 
 
 ### Link to Modeling Page 
 [Click here for the Modeling Page](Modeling.html)

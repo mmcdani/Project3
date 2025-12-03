@@ -5,6 +5,8 @@ format:
     theme: cosmo
     toc: true
     output-dir: docs
+editor_options: 
+  chunk_output_type: console
 ---
 
 ### Introduction
@@ -13,8 +15,9 @@ Start with a basic introduction (feel free to repeat some things from the other 
 
 Necessary libraries
 
-```{r}
+```{r, warning= FALSE}
 library(tidymodels)
+library(tidyverse)
 library(tidyr)
 library(dplyr)
 library(readr)
@@ -23,35 +26,65 @@ library(readr)
 load data
 
 ```{r}
-diabetes_data <- read_csv("data/diabetes_012_health_indicators_BRFSS2015.csv")
+diabetes_data
 ```
 
-Create Diabeties_binary variable
+Split the data into a training (70%) of the data and a test set (30%) of the data. Set seed to make it reproducible
 
 ```{r}
-diabetes_data <- diabetes_data |>
-  mutate(
-    diabetes_binary = ifelse(Diabetes_012 == "No diabetes", 0, 1) |>                               factor(levels = c(0, 1))
-  )
-```
-
-Split the data into a training (70%) of the data and a test set (30%) of the data. Set seed to make thing reproducible
-
-```{r}
-set.seed(11)
-diabetes_split <- initial_split(diabetes_data, prop = 0.75, strata = diabetes_binary)
+#setting seed
+set.seed(11) 
+#70/30 training and test split
+diabetes_split <- initial_split(diabetes_data, prop = 0.70, strata = diabetes_binary)
+#creating data frames for training and test sets
 diabetes_train <- training(diabetes_split)
-bike_test <- testing(diabetes_split)
+diabetes_test <- testing(diabetes_split) 
+```
 
+create a 5 fold cross-validation
+```{r}
 #5 fold cross-validation
 diabetes_5_fold <- vfold_cv(diabetes_train, 5) 
 ```
 
+create recipes
+```{r}
+#use all predictors
+recipe1 <- recipe(Diabetes_binary ~ ., data = train)
+#using some predictors
+recipe2 <- recipe(Diabetes_binary ~ HighBP + HighChol + Age +PhysHlth + Diffwalk + GenHlt,
+                  data = train)
+```
+
 ### Classification Tree
 
-You should provide a thorough explanation of what a classification tree model is.
+A classification tree is a nonlinear model that is used when the response variable is a categorical variable. The predictor spaces are split into regions and we make our predictions based on which bin our observation ends up in. Typically, the most prevalent class in a bin is our prediction.
+
+Some pros of using a classification tree is that they are simple to understand and easy to interpret output, predictors do not need to be scaled, statistical assumptions do not need to be made to get the fit, and the variable selection is based on the algorithm. 
+
+Some cons of using a classification tree is that small changes in data can vastly change the tree, there is no optimal algorithm for choosing splits, and you need to prune or use CV to determine the model. 
 
 Then you should fit a classification tree with varying values for the complexity parameter and choose the best model (based on 5 fold CV on the training set). Include at least 5 predictors in this model
+
+```{r}
+cv_reg_1 <- find_cv("Diabetes_binary", "HvyAlcoholConsump", folds, num_folds = 5)
+```
+
+```{r}
+cv_reg_2 <- find_cv("Diabetes_binary", "Sex", folds, num_folds = 10)
+```
+
+```{r}
+cv_reg_3 <- find_cv("Diabetes_binary", "Smoker", folds, num_folds = 10)
+```
+
+```{r}
+cv_reg_4 <- find_cv("Diabetes_binary", "HighBP", folds, num_folds = 10)
+```
+
+```{r}
+cv_reg_5 <- find_cv("Diabetes_binary", "HighChol", folds, num_folds = 10)
+```
 
 ### Random Forest 
 You should provide a thorough explanation of what a random forest is and why we might use it (be sure to relate this to a basic classification tree).
