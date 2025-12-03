@@ -26,7 +26,7 @@ library(readr)
 load data
 
 ```{r}
-diabetes_data
+diabetes_data <- read_csv("data/diabetes_binary_health_indicators_BRFSS2015.csv")
 ```
 
 Split the data into a training (70%) of the data and a test set (30%) of the data. Set seed to make it reproducible
@@ -35,7 +35,7 @@ Split the data into a training (70%) of the data and a test set (30%) of the dat
 #setting seed
 set.seed(11) 
 #70/30 training and test split
-diabetes_split <- initial_split(diabetes_data, prop = 0.70, strata = diabetes_binary)
+diabetes_split <- initial_split(diabetes_data, prop = 0.70, strata = Diabetes_binary)
 #creating data frames for training and test sets
 diabetes_train <- training(diabetes_split)
 diabetes_test <- testing(diabetes_split) 
@@ -50,10 +50,10 @@ diabetes_5_fold <- vfold_cv(diabetes_train, 5)
 create recipes
 ```{r}
 #use all predictors
-recipe1 <- recipe(Diabetes_binary ~ ., data = train)
+recipe1 <- recipe(Diabetes_binary ~ ., data = diabetes_train)
 #using some predictors
-recipe2 <- recipe(Diabetes_binary ~ HighBP + HighChol + Age +PhysHlth + Diffwalk + GenHlt,
-                  data = train)
+recipe2 <- recipe(Diabetes_binary ~ HighBP + HighChol + Age +PhysHlth + DiffWalk + GenHlth,
+                  data = diabetes_train)
 ```
 
 ### Classification Tree
@@ -67,24 +67,38 @@ Some cons of using a classification tree is that small changes in data can vastl
 Then you should fit a classification tree with varying values for the complexity parameter and choose the best model (based on 5 fold CV on the training set). Include at least 5 predictors in this model
 
 ```{r}
-cv_reg_1 <- find_cv("Diabetes_binary", "HvyAlcoholConsump", folds, num_folds = 5)
+tree_spec <- decision_tree(tree_depth = 8,
+                           min_n = 2,
+                           cost_complexity = tune()) |>
+  set_engine('rpart') |>
+  set_mode('classification')
+
+tree_workflow <- workflow() |>
+  add_recipe(recipe2) |>
+  add_model(tree_spec)
 ```
 
 ```{r}
-cv_reg_2 <- find_cv("Diabetes_binary", "Sex", folds, num_folds = 10)
+tree_fit <- tree_workflow |>
+  tune_grid(resamples = cv_fold,
+            grid = grid_regular(cost_complexity(),
+                                levels = 5),
+            metrics = metric_set(mn_loh_loss, accuracy))
+
+#look at the metrics for each fold
+tree_fit |>
+  collect_metrics(type = 'wide') |>
+  arrange(mn_log_loss, accuracy)
 ```
 
+choose the best model 
 ```{r}
-cv_reg_3 <- find_cv("Diabetes_binary", "Smoker", folds, num_folds = 10)
+best_tree <- tree_fit |>
+  select_best(metric = 'mn_log_loss')
+best_tree
 ```
 
-```{r}
-cv_reg_4 <- find_cv("Diabetes_binary", "HighBP", folds, num_folds = 10)
-```
 
-```{r}
-cv_reg_5 <- find_cv("Diabetes_binary", "HighChol", folds, num_folds = 10)
-```
 
 ### Random Forest 
 You should provide a thorough explanation of what a random forest is and why we might use it (be sure to relate this to a basic classification tree).
