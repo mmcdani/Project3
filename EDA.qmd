@@ -124,10 +124,13 @@ diabetes_data$Income <- factor(diabetes_data$Income,
                                      levels = c(1, 2, 3, 4, 5, 6, 7, 8),
 #need to figure out how to separate income
                                                                     labels = c("<10000", "10000-14999", "15000-19999", "20000-24999", "30000-34999", "35000-39999","40000-44999", ">=75000"))
-
 head(diabetes_data)
 ```
 
+saving the cleaned data 
+```{r}
+saveRDS(diabetes_data, "data/diabetes_cleaned.rds")
+```
 
 ### Summarizations
 
@@ -149,7 +152,7 @@ binary_summary_wide
 
 Create some contingency tables to see if any variables stick out that I would like to look at more 
 
-Is diabetes more prevelant depending on gender
+Is diabetes more prevalent depending on gender
 ```{r}
 ggplot(
   data = diabetes_data |> drop_na(Sex, Diabetes_binary),

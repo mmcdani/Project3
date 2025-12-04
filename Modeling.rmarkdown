@@ -1,0 +1,212 @@
+---
+title: "Modeling"
+format:
+  html:
+    theme: cosmo
+    toc: true
+    output-dir: docs
+editor_options: 
+  chunk_output_type: console
+---
+
+### Introduction
+
+Start with a basic introduction (feel free to repeat some things from the other file)
+
+Necessary libraries
+
+```{r, warning= FALSE}
+library(tidymodels)
+library(parsnip)
+library(ranger)
+library(tidyverse)
+library(tidyr)
+library(dplyr)
+library(readr)
+```
+
+load data
+
+```{r}
+diabetes_data <- readRDS("data/diabetes_cleaned.rds")
+diabetes_data
+```
+
+Split the data into a training (70%) of the data and a test set (30%) of the data. Set seed to make it reproducible
+
+```{r}
+#setting seed
+set.seed(11) 
+#70/30 training and test split
+diabetes_split <- initial_split(diabetes_data, prop = 0.70, strata = Diabetes_binary)
+#creating data frames for training and test sets
+diabetes_train <- training(diabetes_split)
+diabetes_test <- testing(diabetes_split) 
+```
+
+create a 5 fold cross-validation
+```{r}
+#5 fold cross-validation
+diabetes_5_fold <- vfold_cv(diabetes_train, 5) 
+```
+
+create recipes
+```{r}
+#use all predictors
+recipe1 <- recipe(Diabetes_binary ~ ., data = diabetes_train)
+#using some predictors
+recipe2 <- recipe(Diabetes_binary ~ HighBP + HighChol + Age +PhysHlth + DiffWalk + GenHlth,
+                  data = diabetes_train)
+```
+
+### Classification Tree
+
+A classification tree is a nonlinear model that is used when the response variable is a categorical variable. The predictor spaces are split into regions and we make our predictions based on which bin our observation ends up in. Typically, the most prevalent class in a bin is our prediction.
+
+Some pros of using a classification tree is that they are simple to understand and easy to interpret output, predictors do not need to be scaled, statistical assumptions do not need to be made to get the fit, and the variable selection is based on the algorithm. 
+
+Some cons of using a classification tree is that small changes in data can vastly change the tree, there is no optimal algorithm for choosing splits, and you need to prune or use CV to determine the model. 
+
+Then you should fit a classification tree with varying values for the complexity parameter and choose the best model (based on 5 fold CV on the training set). Include at least 5 predictors in this model
+
+```{r}
+tree_spec <- decision_tree(tree_depth = 8,
+                           min_n = 2,
+                           cost_complexity = tune()) |>
+  set_engine('rpart') |>
+  set_mode('classification')
+
+tree_workflow <- workflow() |>
+  add_recipe(recipe2) |>
+  add_model(tree_spec)
+```
+
+```{r}
+tree_fit <- tree_workflow |>
+  tune_grid(resamples = diabetes_5_fold,
+            grid = grid_regular(cost_complexity(),
+                                levels = 5),
+            metrics = metric_set(mn_log_loss, accuracy))
+
+#look at the metrics for each fold
+tree_fit |>
+  collect_metrics(type = 'wide') |>
+  arrange(mn_log_loss, accuracy)
+```
+
+choose the best model 
+```{r}
+best_tree <- tree_fit |>
+  select_best(metric = 'mn_log_loss')
+best_tree
+```
+
+
+
+### Random Forest 
+You should provide a thorough explanation of what a random forest is and why we might use it (be sure to relate this to a basic classification tree).
+
+You should then fit a random forest model with varying values for the mtry parameter and choose the best model (based on 5 fold CV on the training set). Include at least 5 predictors in this model.
+
+create recipe
+```{r}
+rf_recipe <- recipe(Diabetes_binary ~ HighBP + HighChol + Age + PhysHlth + DiffWalk + GenHlth,
+                    data = diabetes_train)
+```
+
+define random forest model 
+```{r}
+rf_model <- rand_forest(
+  mode = "classification",
+  mtry = tune(),
+  trees = 500
+) |>
+  set_engine("ranger")
+```
+
+create workflow
+```{r}
+rf_workflow <- workflow() |>
+  add_recipe(rf_recipe) |>
+  add_model(rf_model)
+```
+
+for random forest model with varying values for the mtry parameter
+```{r}
+rf_grid <- grid_regular(
+  finalize(mtry(), diabetes_train),
+  levels = 6
+)
+
+rf_tune <- tune_grid(
+  rf_workflow,
+  resamples = diabetes_5_fold,
+  grid = rf_grid,
+  metrics = metric_set(roc_auc, accuracy)
+)
+```
+
+select best mtry
+```{r}
+best_rf <- rf_tune |>
+  select_best("roc_auc")
+best_rf
+```
+
+now lets fit on the full training set
+```{r}
+final_rf <- rf_workflow |>
+  finalize_workflow(best_rf)
+
+final_rf_fit <- final_rf |>
+  fit(data = diabetes_train)
+```
+
+test set
+```{r}
+rf_results <- predict(final_rf_fit, diabetes_test, type = "prob") |>
+  bind_cols(diabetes_test)
+
+roc_auc(rf_results, truth = Diabetes_binary, .pred_Diabetic.or.Prediabetic)
+```
+
+compare models
+
+classification tree
+```{r}
+tree_final <- tree_workflow |>
+  finalize_workflow(best_tree) |>
+  last_fit(diabetes_split, metrics = metric_set(mn_log_loss, accuracy))
+
+tree_final |>
+  collect_metrics()
+```
+
+random forest model
+```{r}
+rf_final <- rf_workflow |>
+  finalize_workflow(best_rf) |>
+  last_fit(diabetes_split, metrics = metric_set(mn_log_loss, accuracy))
+
+rf_final |>
+  collect_metrics()
+```
+
+
+### Final Model Selection 
+You should now have two best models (one for each model type above). Compare both models on the test set and declare an overall winner!
+
+```{r}
+rbind(
+  tree_final |>
+    collect_metrics(type = 'wide') |> 
+    mutate(Model = 'TREE', .before = 'mn_log_loss'),
+  rf_final |>
+    collect_metrics(type = 'wide') |> 
+    mutate(Model = 'RF', .before = 'mn_log_loss')
+) |>
+  arrange(mn_log_loss, accuracy)
+```
+
+### Link to EDA 
+[Click here for the EDA Page](EDA.html)
